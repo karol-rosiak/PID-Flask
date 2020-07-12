@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ title }}</title>
+  <script src={{ url_for('static', filename='/js/chartjs/Chart.js') }}></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css"
+   integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+   crossorigin=""/>
+    <style>
+   #mapid {
+   height: 500px;
+   width:  500px;
+   display:none;
+   }
+   .legend{
+    font-family: arial;
+    font-size: 20px;
+   }
+   </style>
+
+</head>
+
+<body>
+<h1>{{ title }}</h1>
+
+
+<form>
+<!--
+Wartość a: <br/>
+<input type="text" id="a" name="a" /></br>
+Wartość b: <br/>
+<input type="text" id="b" name="b" /></br>
+-->
+Aktualna lokalizacja:<br />
+    <input id="lat" type="text" value="{{lat}}" />, <input id="lng" type="text" value="{{lng}}" /><br />
+    <a href="#" id="showMap">Pokaż mapę</a><br />
+    <input type="submit" value="Aktualizuj lokalizację" />
+</form>
+
+<div id="mapid"></div></br>
+<span id="counter"></span></br>
+<span id="weather"></span>
+<div style="visibility: hidden;" id="weatherdiv">
+{% for x in range(8) %}
+    <tr>
+      <img src="#" id="img{{x}}"></img>
+    </tr>
+{% endfor %}
+</div>
+<div>
+    <canvas id="chart" style="visibility: hidden;" width="600" height="400"></canvas>
+</div>
+<center><span class="legend" id="feedbackLegend"><b>-</b> feedback</span> <span class="legend" id="setpointLegend"><b>-</b> setpoint</span></center>
+
+	 <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"
+   integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew=="
+   crossorigin=""></script>
+  <script>
+  var obj = new Object();
+  var setpointColor = "green";
+  var feedbackColor = "red";
+$(function () {
+  $('form').on('submit', function (e) {
+      e.preventDefault();
+
+      //obj.a = document.getElementById("a").value;
+      //obj.b  = document.getElementById("b").value;
+      obj.lat = document.getElementById("lat").value;
+      obj.lng  = document.getElementById("lng").value;
+      var jsonString= JSON.stringify(obj);
+      console.log(obj.lat + " " + obj.lng);
+      updateMap(obj.lat,obj.lng)
+      $.ajax({
+    type: 'POST',
+    url: "/updateLocation",
+    data: jsonString,
+    dataType: 'json',
+    contentType: 'application/json; charset=utf-8'
+}).done(function(data) {
+     alert("Zaktualizowano pomyślnie");
+});
+
+      });
+	        });
+
+function updateChart(a,b,aLabel,bLabel,labels){
+    document.getElementById('chart').style.visibility = "visible";
+  var dataset = [{
+            label: aLabel,
+            data: a, 
+            backgroundColor: 'transparent',
+            pointBorderColor: 'orange',
+            pointBackgroundColor: 'rgba(255,150,0,0.5)',
+            pointHoverRadius: 10,
+            pointHitRadius: 30,
+            pointBorderWidth: 2,
+            borderColor: feedbackColor
+        },
+        {
+            label: bLabel,
+            data: b, 
+            backgroundColor: 'transparent',
+            pointBorderColor: 'orange',
+            pointBackgroundColor: 'rgba(255,150,0,0.5)',
+            pointHoverRadius: 10,
+            pointHitRadius: 30,
+            pointBorderWidth: 2,
+            borderColor: setpointColor
+        }];
+  
+    myChart.data.datasets = dataset;
+    myChart.data.labels = labels;
+    myChart.update();            
+}
+
+function createChart(){
+  var ctx = document.getElementById('chart').getContext('2d');
+
+  myChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: [],
+        datasets: []
+    },
+    options: {
+        responsive: true,
+        width:100,
+        height:100,
+        maintainAspectRatio: false,
+        legend: {
+                display : false
+            },
+        title: {
+            display: true,
+            text: 'Tytuł'
+        },
+        scales: {
+            yAxes: [{
+                ticks: {
+                    beginAtZero: true
+                  },
+                  scaleLabel: {
+                    display: true,
+                    labelString: 'Wartość'
+                    }
+            }],
+            xAxes: [{
+                  scaleLabel: {
+                    display: true,
+                    labelString: 'Czas'
+                    }
+            }]
+            
+        }
+    }
+});
+}
+
+ var lat = document.getElementById('lat');
+   var lng = document.getElementById('lng');
+   var mymap = L.map('mapid').setView([lat.value, lng.value], 13);
+   L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
+    attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+    maxZoom: 18,
+    id: 'mapbox/streets-v11',
+    tileSize: 512,
+    zoomOffset: -1,
+    accessToken: 'pk.eyJ1IjoiY2FwYXJvbDY5OTEiLCJhIjoiY2tjYWFyemw0MXQzczJ2bWduc2M2bDdhNCJ9.y5I0CgQf51ECnoGXQND8Sw'
+}).addTo(mymap);
+var marker =  L.marker([lat.value,lng.value]).addTo(mymap);
+
+
+function updateMap(lt,lg) {
+	mymap.removeLayer(marker)
+	marker = L.marker([lt,lg]).addTo(mymap);
+	mymap.setView([lt, lg], 13);
+    getWeather();
+}
+
+function onMapClick(e) {
+	mymap.removeLayer(marker)
+	marker = L.marker(e.latlng).addTo(mymap);
+	console.log(e.latlng);
+	lat.value = e.latlng['lat'];
+	lng.value = e.latlng['lng'];
+	mymap.setView([lat.value, lng.value], 13);
+    getWeather();
+}
+mymap.on('click', onMapClick);
+
+function getWeather(){
+    var url = "https://api.openweathermap.org/data/2.5/onecall?lat=" + lat.value + "&lon=" + lng.value + "&exclude=current,minutely,hourly&lang=pl&appid=a874452b76f1cc6022316d344c4ac034"
+  $.post(url,
+  function(response, status){
+	var daily = response.daily;
+	var counter = 0;
+	var weathers ="";
+    console.log(response.daily);
+    obj.weather=[];
+	for(var i = 0; i < daily.length; i++){
+	var weather = daily[i]['weather'][0];
+	obj.weather.push(weather['main']);
+	if(weather['main'] == 'Rain') counter++;
+	weathers = weathers.concat( (i+1) + " dzień: " + weather['description'] + "<br/> ");
+	document.getElementById("img" + i).src = "http://openweathermap.org/img/wn/" + weather['icon'] + ".png";
+	}
+	document.getElementById("counter").innerHTML = "Opady deszczu przez następne 8 dni: " + counter;
+
+	document.getElementById("weatherdiv").style.visibility = "visible";
+});
+}
+
+$( "#showMap" ).click(function() {
+    if ($("#mapid").css('display') == 'none')
+    {
+       $("#mapid").css('display', 'block');
+	   $("#showMap").text("Zamknij mapę");
+
+	   mymap.invalidateSize();
+    }else{
+	   $("#mapid").css('display', 'none');
+	   $("#showMap").text("Pokaż mapę");
+	}
+
+});
+
+function getChartData(){
+ $.ajax({
+    type: 'POST',
+    url: "/chartData",
+    dataType: 'json',
+    contentType: 'application/json; charset=utf-8'
+}).done(function(data) {
+     updateChart(data.a,data.b,data.aLabel,data.bLabel,data.labels)
+});
+}
+
+$("#feedbackLegend").css("color", feedbackColor);
+$("#setpointLegend").css("color", setpointColor);
+
+createChart();
+getChartData();
+getWeather();
+setInterval("getChartData()",60000);
+ </script>	
+
+</body>
+</html>
