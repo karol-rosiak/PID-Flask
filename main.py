@@ -2,7 +2,75 @@ from flask import jsonify,Flask,request, render_template
 import json
 import sqlite3
 from datetime import datetime
+import PID
+import Zbiornik
+import time
+import numpy as np
+from scipy.interpolate import BSpline, make_interp_spline #  Switched to BSpline
 app = Flask(__name__)
+
+def test_pid(P = 0.2,  I = 0.0, D= 0.0, L=100):
+    """Self-test PID class
+
+    .. note::
+        ...
+        for i in range(1, END):
+            pid.update(feedback)
+            output = pid.output
+            if pid.SetPoint > 0:
+                feedback += (output - (1/i))
+            if i>9:
+                pid.SetPoint = 1
+            time.sleep(0.02)
+        ---
+    """
+    zbiornik = Zbiornik.ZBIORNIK()
+    pid = PID.PID(P, I, D)
+
+    pid.SetPoint = 20
+    pid.setSampleTime(0.01)
+
+    END = L
+    feedback = zbiornik.poziom
+
+    feedback_list = []
+    time_list = []
+    setpoint_list = []
+
+    for i in range(1, END):
+        pid.update(feedback)
+        output = pid.output
+        if output > 100:
+            output = 100
+        zbiornik.open(output)
+        feedback = zbiornik.poziom
+
+        time.sleep(0.02)
+
+        feedback_list.append(feedback)
+        setpoint_list.append(pid.SetPoint)
+        time_list.append(i)
+
+
+    time_sm = np.array(time_list)
+    time_smooth = np.linspace(time_sm.min(), time_sm.max(), 300)
+
+    # feedback_smooth = spline(time_list, feedback_list, time_smooth)
+    # Using make_interp_spline to create BSpline
+    helper_x3 = make_interp_spline(time_list, feedback_list)
+    feedback_smooth = helper_x3(time_smooth)
+
+    #zapisz do bazy wyniki
+    print(type(feedback_smooth))
+    feedback = json.dumps(feedback_smooth.tolist())
+    setpoint = json.dumps(setpoint_list)
+    time_to_save = json.dumps( time_list)
+    conn = sqlite3.connect('baza.db')
+    c = conn.cursor()
+    c.execute("INSERT INTO wykres VALUES (?,?,?,?)",
+              (feedback, setpoint, time_to_save, datetime.now().strftime("%m/%d/%Y, %H:%M:%S")))
+    conn.commit()
+    conn.close()
 
 def createtable():
     import sqlite3
@@ -36,26 +104,9 @@ def updatelocation():
 
 @app.route('/chartData' ,methods=['POST'])
 def summary():
-
-    #to sie wjebie przy zapisywaniu obliczen
-    feedback = json.dumps([13.0, 9.158356952756275, 6.848577267441179, 5.688847368181831, 5.3242431258034255, 5.501176120907685,
-                 6.034404179965026, 6.79012186655758, 7.672681427294654, 8.614604080104233, 9.56918360593638,
-                 10.504864898750888, 11.401158680051136, 12.24548092198102, 13.030965719820589, 13.754687747851214,
-                 14.416480987405443, 15.017984532396248, 15.562037781205916, 16.05217375197864, 16.492295040158105,
-                 16.886437947239376, 17.238612534664032, 17.552697801535444, 17.83237001464451, 18.08106885159793,
-                 18.301980229030008, 18.49801861339885, 18.671849324576506, 18.825880506591403, 18.962287863754856,
-                 19.08303038811924, 19.189861088800892, 19.28434891569606, 19.36789529029278, 19.441747061802232,
-                 19.507015741263434, 19.564687037909188, 19.615637032505457, 19.6606430868025, 19.700393999682348,
-                 19.73549946481067, 19.7665000563815, 19.793873379128797, 19.81804270845294, 19.83938141435088,
-                 19.858220524929372, 19.874852132066813, 19.889534131304643])
-    setpoint = json.dumps([20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20,
-                 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20])
-    time = json.dumps([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49])
+    test_pid(3, 13, 0.01, L=200)
     conn = sqlite3.connect('baza.db')
     c = conn.cursor()
-    c.execute("INSERT INTO wykres VALUES (?,?,?,?)",(feedback,setpoint,time,datetime.now().strftime("%m/%d/%Y, %H:%M:%S")))
-    conn.commit()
-    #koniec zapisywania
     tab = c.execute('SELECT * FROM wykres ORDER BY rowid DESC LIMIT 1').fetchone()
     conn.close()
 
