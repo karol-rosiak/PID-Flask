@@ -6,6 +6,7 @@ import PID
 import Zbiornik
 import time
 import numpy as np
+import requests
 from scipy.interpolate import BSpline, make_interp_spline #  Switched to BSpline
 app = Flask(__name__)
 
@@ -27,7 +28,18 @@ def test_pid(P = 0.2,  I = 0.0, D= 0.0, L=100):
     zbiornik = Zbiornik.ZBIORNIK()
     pid = PID.PID(P, I, D)
 
-    pid.SetPoint = 20
+    raincounter = weathercounter()
+    if(raincounter <= 2):
+        pid.SetPoint = 20
+    else:
+        if(raincounter <= 4):
+            pid.SetPoint = 25
+        else:
+            if(raincounter <= 6):
+                pid.SetPoint = 30
+            else:
+                pid.SetPoint = 35
+
     pid.setSampleTime(0.01)
 
     END = L
@@ -124,6 +136,26 @@ def summary():
     dict['yLabel'] = 'y'
 
     return jsonify(dict)
+
+def weathercounter():
+    conn = sqlite3.connect('baza.db')
+    c = conn.cursor()
+    tab = c.execute('SELECT * FROM lokalizacja ORDER BY rowid DESC LIMIT 1').fetchone()
+    conn.close()
+    lat = str(tab[0])
+    lng = str(tab[1])
+    url = "https://api.openweathermap.org/data/2.5/onecall?lat=" + lat + "&lon=" + lng + "&exclude=current,minutely,hourly&lang=pl&appid=a874452b76f1cc6022316d344c4ac034"
+    r = requests.get(url)
+    print(r.json())
+    daily = r.json()["daily"]
+
+    counter = 0
+    for weather in daily:
+        if weather['weather'][0]['main']=="Rain":
+            counter+=1
+
+    return counter
+
 
 if __name__ == '__main__':
     app.run(port=5000,debug=True)
