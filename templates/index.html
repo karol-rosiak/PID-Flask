@@ -53,7 +53,7 @@ Aktualna lokalizacja:<br />
     <canvas id="chart" style="visibility: hidden;" width="600" height="400"></canvas>
 </div>
 <center><span class="legend" id="feedbackLegend"><b>-</b> feedback</span> <span class="legend" id="setpointLegend"><b>-</b> setpoint</span></center>
-
+<center><button id="refreshChart" onclick="getChartData()" disabled>Obliczanie wykresu...</button></center>
 	 <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"
    integrity="sha512-gZwIG9x3wUXg2hdXF6+rVkLF/0Vi9U8D2Ntg4Ga5I5BZpVkVxlJWbSQtXPSiUTtC0TjtGOmxa1AJPuV0CPthew=="
    crossorigin=""></script>
@@ -61,6 +61,8 @@ Aktualna lokalizacja:<br />
   var obj = new Object();
   var setpointColor = "green";
   var feedbackColor = "red";
+  var dataCounter = 0;
+  var timer;
 $(function () {
   $('form').on('submit', function (e) {
       e.preventDefault();
@@ -86,10 +88,23 @@ $(function () {
 	        });
 
 function updateChart(a,b,aLabel,bLabel,labels){
+    dataCounter++
+    if(dataCounter >=50){
+    window.clearInterval(timer);
+    var button = document.getElementById("refreshChart");
+    button.disabled = false;
+    button.innerHTML = "Oblicz ponownie";
+    return;
+    }
+
+    aPart = a.slice(0, dataCounter);
+    bPart = b.slice(0, dataCounter);
+    labelsPart = labels.slice(0, dataCounter);
+
     document.getElementById('chart').style.visibility = "visible";
   var dataset = [{
             label: aLabel,
-            data: a, 
+            data: aPart, 
             backgroundColor: 'transparent',
             pointBorderColor: 'orange',
             pointBackgroundColor: 'rgba(255,150,0,0.5)',
@@ -100,7 +115,7 @@ function updateChart(a,b,aLabel,bLabel,labels){
         },
         {
             label: bLabel,
-            data: b, 
+            data: bPart, 
             backgroundColor: 'transparent',
             pointBorderColor: 'orange',
             pointBackgroundColor: 'rgba(255,150,0,0.5)',
@@ -111,7 +126,7 @@ function updateChart(a,b,aLabel,bLabel,labels){
         }];
   
     myChart.data.datasets = dataset;
-    myChart.data.labels = labels;
+    myChart.data.labels = labelsPart;
     myChart.update();            
 }
 
@@ -129,9 +144,12 @@ function createChart(){
         width:100,
         height:100,
         maintainAspectRatio: false,
+        animation: {
+            duration: 0
+        },
         legend: {
-                display : false
-            },
+             display : false
+        },
         title: {
             display: true,
             text: 'Tytuł'
@@ -227,14 +245,25 @@ $( "#showMap" ).click(function() {
 });
 
 function getChartData(){
+    var button = document.getElementById("refreshChart");
+    button.disabled = true;
+    button.innerHTML = "Obliczanie wykresu...";
  $.ajax({
     type: 'POST',
     url: "/chartData",
     dataType: 'json',
     contentType: 'application/json; charset=utf-8'
 }).done(function(data) {
-     updateChart(data.a,data.b,data.aLabel,data.bLabel,data.labels)
+    timer = window.setInterval(function() { updateChart(data.a,data.b,data.aLabel,data.bLabel,data.labels) },300);
+    dataCounter = 0;
 });
+}
+
+function cleanIntervals(){
+if(window.myInterval != undefined && window.myInterval != 'undefined'){
+    window.clearInterval(window.myInterval);
+    alert('Timer cleared with id'+window.myInterval);
+}
 }
 
 $("#feedbackLegend").css("color", feedbackColor);
@@ -243,7 +272,7 @@ $("#setpointLegend").css("color", setpointColor);
 createChart();
 getChartData();
 getWeather();
-setInterval("getChartData()",60000);
+getChartData();
  </script>	
 
 </body>
