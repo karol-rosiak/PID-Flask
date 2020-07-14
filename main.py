@@ -144,7 +144,7 @@ def weathercounter():
     conn.close()
     lat = str(tab[0])
     lng = str(tab[1])
-    url = "https://api.openweathermap.org/data/2.5/onecall?lat=" + lat + "&lon=" + lng + "&exclude=current,minutely,hourly&lang=pl&appid=a874452b76f1cc6022316d344c4ac034"
+    url = "https://api.openweathermap.org/data/2.5/onecall?lat=" + lat + "&lon=" + lng + "&exclude=current,minutely,hourly&lang=pl&appid=id"
     r = requests.get(url)
     print(r.json())
     daily = r.json()["daily"]

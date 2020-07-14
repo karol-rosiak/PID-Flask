@@ -209,7 +209,7 @@ function onMapClick(e) {
 mymap.on('click', onMapClick);
 
 function getWeather(){
-    var url = "https://api.openweathermap.org/data/2.5/onecall?lat=" + lat.value + "&lon=" + lng.value + "&exclude=current,minutely,hourly&lang=pl&appid=a874452b76f1cc6022316d344c4ac034"
+    var url = "https://api.openweathermap.org/data/2.5/onecall?lat=" + lat.value + "&lon=" + lng.value + "&exclude=current,minutely,hourly&lang=pl&appid="
   $.post(url,
   function(response, status){
 	var daily = response.daily;
