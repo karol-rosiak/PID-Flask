@@ -99,7 +99,6 @@ function updateChart(a,b,aLabel,bLabel,labels){
 
     aPart = a.slice(0, dataCounter);
     bPart = b.slice(0, dataCounter);
-    labelsPart = labels.slice(0, dataCounter);
 
     document.getElementById('chart').style.visibility = "visible";
   var dataset = [{
@@ -126,7 +125,7 @@ function updateChart(a,b,aLabel,bLabel,labels){
         }];
   
     myChart.data.datasets = dataset;
-    myChart.data.labels = labelsPart;
+    myChart.data.labels = labels.slice(0, 50);
     myChart.update();            
 }
 
@@ -272,7 +271,6 @@ $("#setpointLegend").css("color", setpointColor);
 createChart();
 getChartData();
 getWeather();
-getChartData();
  </script>	
 
 </body>
